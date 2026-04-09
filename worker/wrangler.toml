@@ -1,0 +1,25 @@
+name = "mailias-api"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+# Variabili pubbliche (non sensibili)
+[vars]
+CF_ACCOUNT_ID = "your_account_id"
+CF_ZONE_ID    = "your_zone_id"
+CF_DOMAIN     = "yourdomain.com"
+OIDC_ISSUER   = "https://pocket-id.yourdomain.com"
+OIDC_JWKS_URI = "https://pocket-id.yourdomain.com/.well-known/jwks.json"
+
+# Email send binding (Cloudflare Workers Email)
+# Richiede che il dominio sia verificato in Cloudflare Email Routing
+[[send_email]]
+name = "EMAIL"
+
+# Secret da impostare via CLI:
+#   wrangler secret put CF_API_TOKEN
+#   wrangler secret put ALLOWED_EMAIL
+#
+# CF_API_TOKEN richiede i seguenti permessi:
+#   - Zone > Email Routing Rules > Edit
+#   - Zone > Email Routing Addresses > Read
+#   - Account > Email Routing > Read
