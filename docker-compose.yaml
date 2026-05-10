@@ -1,0 +1,60 @@
+services:
+
+  # ── Frontend Vue SPA ─────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_OIDC_AUTHORITY:               ${VITE_OIDC_AUTHORITY}
+        VITE_OIDC_CLIENT_ID:               ${VITE_OIDC_CLIENT_ID}
+        VITE_OIDC_REDIRECT_URI:            ${VITE_OIDC_REDIRECT_URI}
+        VITE_OIDC_POST_LOGOUT_REDIRECT_URI: ${VITE_OIDC_POST_LOGOUT_REDIRECT_URI}
+        VITE_CF_DOMAIN:                    ${VITE_CF_DOMAIN}
+        VITE_API_BASE_URL:                 ${VITE_API_BASE_URL}
+    container_name: mailias-frontend
+    restart: unless-stopped
+    networks:
+      - mailias-net
+      - npm_default
+    ports:
+      - "7080:80"
+
+  # ── Backend API (Node.js) ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mailias-backend
+    restart: unless-stopped
+    environment:
+      PORT:             "8787"
+      CF_API_TOKEN:     ${CF_API_TOKEN}
+      CF_ZONE_ID:       ${CF_ZONE_ID}
+      OIDC_ISSUER:      ${VITE_OIDC_AUTHORITY}
+      OIDC_JWKS_URI:    ${VITE_OIDC_AUTHORITY}/.well-known/jwks.json
+      ALLOWED_SUB:      ${ALLOWED_SUB}
+      FRONTEND_URL:     ${FRONTEND_URL}
+      FRONTEND_URL_DEV: ${FRONTEND_URL_DEV:-}
+      RESEND_API_KEY:   ${RESEND_API_KEY:-}
+      SMTP_HOST:        ${SMTP_HOST:-}
+      SMTP_PORT:        ${SMTP_PORT:-587}
+      SMTP_SECURE:      ${SMTP_SECURE:-false}
+      SMTP_USER:        ${SMTP_USER:-}
+      SMTP_PASS:        ${SMTP_PASS:-}
+    networks:
+      - mailias-net
+      - npm_default
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "8787:8787"
+
+networks:
+  mailias-net:
+    driver: bridge
+  npm_default:
+    external: true
