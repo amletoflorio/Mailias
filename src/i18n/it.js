@@ -21,6 +21,8 @@ export default {
   // Navigation
   nav: {
     compose: 'Compose',
+    inbox: 'Inbox',
+    sent: 'Inviate',
     aliases: 'Aliases',
     logout: 'Logout',
   },
@@ -56,6 +58,22 @@ export default {
     sendSuccessAttachments: 'Email inviata con {n} allegato',
     sendSuccessAttachmentsPlural: 'Email inviata con {n} allegati',
     sendError: 'Errore durante l\u2019invio',
+    originalMessage: 'Messaggio originale',
+  },
+
+  // Inbox view (reply-by-forward)
+  inbox: {
+    title: 'Inbox',
+    subtitle: '{n} in attesa',
+    empty: 'Nessuna email inoltrata in attesa di risposta',
+    noSubject: '(nessun oggetto)',
+    from: 'Da:',
+    replyAs: 'Rispondi come:',
+    noAliasMatch: 'nessun alias corrispondente \u2014 seleziona manualmente',
+    unknown: 'mittente sconosciuto',
+    replyBtn: 'Rispondi \u2192',
+    dismissBtn: 'Scarta',
+    dismissError: 'Errore nello scarto',
   },
 
   // Aliases view
@@ -88,5 +106,20 @@ export default {
     updateSuccess: 'Destinazione aggiornata',
     updateError: 'Errore nell\u2019aggiornamento',
     invalidEmail: 'Inserisci un indirizzo email valido',
+  },
+
+  // Vista Inviate (storico email inviate tramite mailias)
+  sent: {
+    title: 'Inviate',
+    subtitle: '{n} inviate',
+    empty: 'Nessuna email inviata finora',
+    noSubject: '(nessun oggetto)',
+    from: 'Da:',
+    deleteTitle: 'Elimina',
+    deleteConfirmTitle: 'Eliminare questa email inviata?',
+    deleteConfirmBody: 'Rimuove solo la voce dallo storico di mailias — l’email è già stata consegnata.',
+    cancelBtn: 'Annulla',
+    deleteBtn: 'Elimina',
+    deleteError: 'Errore nell’eliminazione',
   },
 }

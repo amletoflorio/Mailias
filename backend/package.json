@@ -2,6 +2,7 @@
   "name": "mailias-backend",
   "type": "module",
   "dependencies": {
+    "better-sqlite3": "^11.0.0",
     "jose": "^5.0.0",
     "nodemailer": "^6.9.0"
   }

@@ -1,7 +1,10 @@
 FROM node:22-alpine
 WORKDIR /app
 COPY package.json .
-RUN npm install --omit=dev
+# python3/make/g++ needed to build better-sqlite3's native bindings on musl (alpine)
+RUN apk add --no-cache python3 make g++ \
+  && npm install --omit=dev \
+  && apk del python3 make g++
 COPY index.js .
 ENV NODE_ENV=production
 EXPOSE 8787

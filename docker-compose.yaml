@@ -28,20 +28,24 @@ services:
     container_name: mailias-backend
     restart: unless-stopped
     environment:
-      PORT:             "8787"
-      CF_API_TOKEN:     ${CF_API_TOKEN}
-      CF_ZONE_ID:       ${CF_ZONE_ID}
-      OIDC_ISSUER:      ${VITE_OIDC_AUTHORITY}
-      OIDC_JWKS_URI:    ${VITE_OIDC_AUTHORITY}/.well-known/jwks.json
-      ALLOWED_SUB:      ${ALLOWED_SUB}
-      FRONTEND_URL:     ${FRONTEND_URL}
-      FRONTEND_URL_DEV: ${FRONTEND_URL_DEV:-}
-      RESEND_API_KEY:   ${RESEND_API_KEY:-}
-      SMTP_HOST:        ${SMTP_HOST:-}
-      SMTP_PORT:        ${SMTP_PORT:-587}
-      SMTP_SECURE:      ${SMTP_SECURE:-false}
-      SMTP_USER:        ${SMTP_USER:-}
-      SMTP_PASS:        ${SMTP_PASS:-}
+      PORT:                 "8787"
+      CF_API_TOKEN:         ${CF_API_TOKEN}
+      CF_ZONE_ID:           ${CF_ZONE_ID}
+      OIDC_ISSUER:          ${VITE_OIDC_AUTHORITY}
+      OIDC_JWKS_URI:        ${VITE_OIDC_AUTHORITY}/.well-known/jwks.json
+      ALLOWED_SUB:          ${ALLOWED_SUB}
+      FRONTEND_URL:         ${FRONTEND_URL}
+      FRONTEND_URL_DEV:     ${FRONTEND_URL_DEV:-}
+      RESEND_API_KEY:       ${RESEND_API_KEY:-}
+      SMTP_HOST:            ${SMTP_HOST:-}
+      SMTP_PORT:            ${SMTP_PORT:-587}
+      SMTP_SECURE:          ${SMTP_SECURE:-false}
+      SMTP_USER:            ${SMTP_USER:-}
+      SMTP_PASS:            ${SMTP_PASS:-}
+      INBOUND_SECRET:       ${INBOUND_SECRET:-}
+      DB_PATH:              /app/data/mailias.db
+    volumes:
+      - ./data:/app/data
     networks:
       - mailias-net
       - npm_default

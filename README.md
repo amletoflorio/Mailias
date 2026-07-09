@@ -89,6 +89,21 @@ The backend comes in two flavours — choose one:
 - Attach files (base64 encoded, multipart MIME)
 - Supports three sending backends: **Resend**, **SMTP** (Mailgun, etc.), or **Cloudflare Workers Email**
 
+### 📥 Inbox (reply by forwarding)
+- Forward a received email from your real inbox to a dedicated address on your
+  own domain — it lands in the mailias Inbox panel
+- One click **Reply** opens Compose with To, Subject (`Re: …`, prefixes deduped)
+  and the original message pre-filled — no more retyping or losing the thread
+- **From** is auto-matched to whichever of your aliases the email originally
+  arrived on, so replies always go out with the alias, never your real address
+- Captured by a small Cloudflare Worker via Email Routing — no second domain
+  needed. See
+  [Reply by forwarding](#reply-by-forwarding-setup) below
+
+### 📤 Sent
+- Every email sent through mailias (Compose or Reply) is logged locally
+- Browse the full history — from, to, subject, date, attachment count
+
 ### 🔐 Authentication
 - OIDC login via [Pocket ID](https://github.com/pocket-id/pocket-id) (self-hosted)
 - JWT verification with JWKS — no shared secrets in the frontend
@@ -245,6 +260,134 @@ Copy the Worker URL (e.g. `https://mailias-api.yourusername.workers.dev`) → se
 
 ---
 
+## Reply by forwarding (setup)
+
+This lets you forward a received email from your real inbox (e.g. Tuta) to a
+dedicated address on your **own domain**, and have it show up in the mailias
+Inbox panel ready to reply — From/To/Subject already filled in, always sent
+from the alias.
+
+Capture is handled by a small standalone Cloudflare Worker
+(`inbound-worker/`), triggered by a Cloudflare Email Routing rule — the same
+free, unlimited routing engine already forwarding your aliases to your real
+inbox. No second domain, no extra MX records, no conflict with your existing
+routing.
+
+> Why not just add a Mailgun route? Mailgun's inbound routing requires
+> verifying a domain in your Mailgun account, and free/lower-tier plans cap
+> you at one verified domain. Authenticating outbound SMTP through a
+> different domain than the one your aliases live on breaks DKIM/SPF
+> alignment for the alias domain — real deliverability risk. The Worker
+> route avoids all of that: Cloudflare Email Routing already owns your
+> domain's MX, at no extra cost.
+
+> 📖 For a fuller walkthrough — including deploying `wrangler` on a machine
+> that has no `npm` (common on NAS Node.js packages), authenticating
+> headless via an API token instead of `wrangler login`, and where to look
+> at logs on both sides — see
+> [docs/REPLY_BY_FORWARDING.md](docs/REPLY_BY_FORWARDING.md).
+
+### 1. Pick a capture address and create the Email Routing rule
+
+Choose a local part on your existing domain that you'll only use for this,
+e.g. `reply@yourdomain.com`. In the Cloudflare dashboard → your zone →
+**Email** → **Email Routing** → **Routing rules** → **Create address**:
+- **Custom address**: `reply@yourdomain.com`
+- **Action**: **Send to a Worker** (not "Send to an email" — you haven't
+  deployed the Worker yet, so leave this rule disabled or come back after step 2)
+
+### 2. Generate a shared secret
+
+```bash
+openssl rand -hex 32
+```
+
+Set the same value in two places:
+- `.env` at the project root → `INBOUND_SECRET=<value>`
+- The Worker's secret (next step)
+
+### 3. Deploy the Worker
+
+```bash
+cd inbound-worker
+npm install -g wrangler   # if not already installed
+wrangler login
+npm install
+wrangler secret put INBOUND_SECRET   # paste the same value as above
+```
+
+Edit `inbound-worker/wrangler.toml` and set `BACKEND_URL` to your backend's
+public inbound endpoint, e.g. `https://api-mailias.yourdomain.com/inbound`.
+Then deploy:
+
+```bash
+wrangler deploy
+```
+
+### 4. Point the Email Routing rule at the Worker
+
+Back in the Cloudflare dashboard → **Email Routing** → **Routing rules** →
+edit the rule from step 1 → **Action**: **Send to a Worker** → select
+`mailias-inbound` (the name from `wrangler.toml`) → **Save**.
+
+### 5. Redeploy the backend
+
+```bash
+docker compose up -d --build backend
+```
+
+### 6. Use it
+
+Save `reply@yourdomain.com` as a contact in your real inbox. Whenever you
+want to reply to something through mailias, forward that message to it as-is
+(don't send as attachment — mailias parses the quoted header block your mail
+client inserts on forward to recover the original sender and recipient).
+It appears in the mailias **Inbox** tab within seconds; click **Reply** to
+jump into Compose with everything pre-filled.
+
+> ℹ️ If your mail client's forward format can't be parsed (varies by client),
+> the item still lands in Inbox with just the subject cleaned up — you fill
+> To/From manually, same as before, just without retyping the subject.
+
+### Troubleshooting
+
+- **Nothing shows up in Inbox** — check the Worker's logs:
+  `wrangler tail mailias-inbound` (from `inbound-worker/`), then forward a
+  test email. A line like `Email from:… to:… - Ok` means the Worker ran
+  without throwing — it does **not** by itself confirm the backend received
+  the POST, since neither side logs on success. The definitive check is
+  opening the mailias **Inbox** tab after forwarding a test email.
+- **Backend logs show `INBOUND_SECRET not set`** — the env var isn't reaching
+  the container; confirm it's under `environment:` for the `backend` service
+  in `docker-compose.yaml` (already wired) and that `.env` has a value, then
+  redeploy: `docker compose up -d --build backend`.
+- **Backend logs show `secret mismatch`** — the value in `.env` doesn't match
+  what you set with `wrangler secret put INBOUND_SECRET`. Regenerate one
+  value and set it in both places.
+- **`wrangler: command not found`** after `npm install -g wrangler` — the
+  global npm bin dir often isn't on `PATH` on NAS devices. Try `npx wrangler
+  <command>` instead, or see the full guide for a no-npm workaround.
+- **`npm: command not found` even though `node` works** — some NAS Node.js
+  packages (e.g. Synology's) ship without npm. See
+  [docs/REPLY_BY_FORWARDING.md](docs/REPLY_BY_FORWARDING.md) for a
+  self-contained bootstrap that doesn't need root/package-manager access.
+- **`wrangler login` hangs or fails** on a headless machine (NAS, server with
+  no browser) — the OAuth flow expects the browser to run on the same host as
+  the CLI. Use an API token instead: create one at
+  [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens)
+  with **Account → Workers Scripts → Edit**, **User → User Details → Read**,
+  and **User → Memberships → Read**, then `export CLOUDFLARE_API_TOKEN=...`
+  before running `wrangler` commands (all three permissions are required —
+  Wrangler calls `/memberships` and `/user` internally even for a plain
+  deploy, and fails with a generic `Authentication error [code: 10000]` if
+  any one is missing).
+- **`wrangler deploy` asks about a `workers.dev` subdomain** — Wrangler 3.x
+  needs *some* publish target even for an email-triggered Worker with no
+  `fetch()` handler. Accepting it is harmless: there's no `fetch()` handler,
+  so the public URL serves nothing. Pick any unclaimed name.
+
+---
+
 ## Environment variables
 
 All variables live in a single `.env` file at the project root. The Docker Compose build injects the `VITE_*` variables at build time via `ARG`/`ENV`. The remaining variables are injected at runtime into the backend container.
@@ -268,6 +411,8 @@ All variables live in a single `.env` file at the project root. The Docker Compo
 | `SMTP_USER` | ⚠️ | SMTP username |
 | `SMTP_PASS` | ⚠️ | SMTP password |
 | `RESEND_API_KEY` | ⚠️ | [Resend](https://resend.com) API key — alternative to SMTP |
+| `INBOUND_SECRET` | ☑️ | Shared secret with `inbound-worker/` — required only for the [reply-by-forwarding](#reply-by-forwarding-setup) Inbox feature. Generate with `openssl rand -hex 32` |
+| `DB_PATH` | ☑️ | Path to the SQLite file backing the Inbox feature. Defaults to `./data/mailias.db`; set to `/app/data/mailias.db` in Docker (already set in `docker-compose.yaml`) |
 
 > ⚠️ At least one of `SMTP_HOST` or `RESEND_API_KEY` must be set for email sending to work. If both are set, Resend takes precedence.
 
@@ -341,20 +486,28 @@ mailias/
 │   │   ├── en.js                  # English strings
 │   │   └── it.js                  # Italian strings
 │   ├── stores/
-│   │   └── aliases.js             # Pinia store for alias state
+│   │   ├── aliases.js             # Pinia store for alias state
+│   │   ├── inbox.js               # Pinia store for pending forwarded emails
+│   │   └── sent.js                # Pinia store for the sent-emails history
 │   ├── router/
 │   │   └── index.js               # Vue Router with auth guard
 │   └── views/
 │       ├── LoginView.vue          # Login page
 │       ├── CallbackView.vue       # OIDC redirect callback handler
 │       ├── AliasesView.vue        # Alias list and management
-│       └── ComposeView.vue        # Email composer with attachment support
+│       ├── ComposeView.vue        # Email composer with attachment support
+│       ├── InboxView.vue          # Forwarded emails awaiting reply
+│       └── SentView.vue           # History of emails sent through mailias
 ├── backend/
 │   ├── index.js                   # Node.js HTTP server (API proxy)
 │   ├── package.json
 │   └── Dockerfile                 # Node 22 Alpine image
 ├── worker/
 │   ├── index.js                   # Cloudflare Worker (alternative backend)
+│   └── wrangler.toml              # Wrangler configuration
+├── inbound-worker/
+│   ├── index.js                   # Cloudflare Worker: parses forwarded emails, POSTs to backend
+│   ├── package.json               # postal-mime dependency
 │   └── wrangler.toml              # Wrangler configuration
 ├── frontend/
 │   ├── Dockerfile                 # Multi-stage: Vite build → Nginx serve
@@ -397,6 +550,11 @@ The backend exposes a small REST API, protected by Bearer token (Pocket ID JWT).
 | `PATCH` | `/aliases/:id` | Update enabled state or destination |
 | `DELETE` | `/aliases/:id` | Delete an alias |
 | `POST` | `/send` | Send an email from an alias |
+| `GET` | `/inbox` | List forwarded emails awaiting reply |
+| `DELETE` | `/inbox/:id` | Dismiss a pending inbox item |
+| `POST` | `/inbound` | Called by `inbound-worker/` — not Bearer-protected, verified via shared secret header instead. See [Reply by forwarding](#reply-by-forwarding-setup) |
+| `GET` | `/sent` | History of emails sent through mailias (most recent 200) |
+| `DELETE` | `/sent/:id` | Remove an item from the sent history |
 
 ---
 
@@ -413,7 +571,16 @@ The backend exposes a small REST API, protected by Bearer token (Pocket ID JWT).
 
 ### How do I reply to an email I received?
 
-Mailias is a **sender**, not a full email client. When someone writes to one of your aliases, the message is forwarded by Cloudflare to your real inbox. You then reply from Mailias like this:
+Mailias is a **sender**, not a full email client — it doesn't read your inbox on its own. When someone writes to one of your aliases, the message is forwarded by Cloudflare to your real inbox. Two ways to reply from there:
+
+**Fastest — forward it into mailias** (requires the [reply-by-forwarding setup](#reply-by-forwarding-setup)):
+
+1. In your real inbox, forward the message to your configured capture address (e.g. `reply@yourdomain.com`)
+2. Open **Inbox** in mailias — the message appears within seconds
+3. Click **Reply** — Compose opens with From (alias), To, and Subject already filled in
+4. Write your reply and send
+
+**Manual — always works, no extra setup:**
 
 1. Open **Compose**
 2. **From** — select the alias that received the original email (e.g. `shop@yourdomain.com`)
@@ -421,8 +588,6 @@ Mailias is a **sender**, not a full email client. When someone writes to one of 
 4. **Reply-To** — leave it empty (it defaults to the alias) or set it explicitly
 5. **Subject** — prefix with `Re: ` followed by the original subject (e.g. `Re: Your order`)
 6. **Message** — write your reply; optionally quote the original text manually
-
-> ℹ️ There is no "Reply" button that auto-fills fields from a received message because Mailias does not read your inbox — it only sends. Your real email client handles incoming mail; Mailias handles the outgoing side from your aliases.
 
 ---
 

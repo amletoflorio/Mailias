@@ -1,0 +1,10 @@
+name = "mailias-inbound"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+# Public URL of the mailias backend's inbound endpoint
+BACKEND_URL = "https://api-mailias.yourdomain.com/inbound"
+
+# Secret — set with: wrangler secret put INBOUND_SECRET
+# Must match INBOUND_SECRET in the backend's .env

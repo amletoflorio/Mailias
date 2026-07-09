@@ -146,10 +146,12 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAliasStore } from '@/stores/aliases'
+import { useInboxStore } from '@/stores/inbox'
 import { useCloudflare } from '@/composables/useCloudflare'
 
 const { t } = useI18n()
 const aliasStore = useAliasStore()
+const inboxStore = useInboxStore()
 const { sendEmail } = useCloudflare()
 
 const form        = ref({ from: '', to: '', replyTo: '', subject: '', body: '' })
@@ -158,6 +160,10 @@ const sending     = ref(false)
 const isDragging  = ref(false)
 const fileInput   = ref(null)
 const toast       = ref({ show: false, type: 'success', message: '' })
+
+// Set when Compose was opened via "Reply" from an Inbox item — the source
+// item is dismissed once the reply is sent successfully.
+const replyingToId = ref(null)
 
 // Alias searchable dropdown state
 const aliasSearch   = ref('')
@@ -281,6 +287,21 @@ function clearForm() {
   aliasSearch.value = ''
 }
 
+// ── Reply-by-forward hand-off ────────────────────────────────────────────────
+
+function applyPendingReply() {
+  const item = inboxStore.pendingReply
+  if (!item) return
+  form.value.from = item.matchedAlias || ''
+  form.value.to = item.originalFrom || ''
+  form.value.subject = item.subject ? `Re: ${item.subject}` : ''
+  form.value.body = item.body
+    ? `\n\n----- ${t('compose.originalMessage')} -----\n${item.body}`
+    : ''
+  replyingToId.value = item.id
+  inboxStore.clearPendingReply()
+}
+
 async function send() {
   if (!canSend.value) return
   sending.value = true
@@ -308,6 +329,10 @@ async function send() {
         : t('compose.sendSuccessAttachmentsPlural', { n })
     showToast('success', msg)
     clearForm()
+    if (replyingToId.value) {
+      inboxStore.dismiss(replyingToId.value).catch(() => {})
+      replyingToId.value = null
+    }
   } catch (e) {
     showToast('error', e.response?.data?.error || t('compose.sendError'))
   } finally {
@@ -317,6 +342,7 @@ async function send() {
 
 onMounted(() => {
   if (!aliasStore.aliases.length) aliasStore.fetchAliases()
+  applyPendingReply()
   document.addEventListener('click', handleClickOutside)
 })
 

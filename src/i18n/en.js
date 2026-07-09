@@ -18,6 +18,8 @@ export default {
   // Navigation
   nav: {
     compose: 'Compose',
+    inbox: 'Inbox',
+    sent: 'Sent',
     aliases: 'Aliases',
     logout: 'Logout',
   },
@@ -53,6 +55,22 @@ export default {
     sendSuccessAttachments: 'Email sent with {n} attachment',
     sendSuccessAttachmentsPlural: 'Email sent with {n} attachments',
     sendError: 'Error while sending',
+    originalMessage: 'Original message',
+  },
+
+  // Inbox view (reply-by-forward)
+  inbox: {
+    title: 'Inbox',
+    subtitle: '{n} pending',
+    empty: 'No forwarded emails waiting for a reply',
+    noSubject: '(no subject)',
+    from: 'From:',
+    replyAs: 'Reply as:',
+    noAliasMatch: 'no alias match — pick manually',
+    unknown: 'unknown sender',
+    replyBtn: 'Reply →',
+    dismissBtn: 'Dismiss',
+    dismissError: 'Error dismissing item',
   },
 
   // Aliases view
@@ -85,5 +103,20 @@ export default {
     updateSuccess: 'Destination updated',
     updateError: 'Error updating destination',
     invalidEmail: 'Please enter a valid email address',
+  },
+
+  // Sent view (history of emails sent through mailias)
+  sent: {
+    title: 'Sent',
+    subtitle: '{n} sent',
+    empty: 'No emails sent yet',
+    noSubject: '(no subject)',
+    from: 'From:',
+    deleteTitle: 'Delete',
+    deleteConfirmTitle: 'Delete this sent email?',
+    deleteConfirmBody: 'This only removes it from mailias history — it has already been delivered.',
+    cancelBtn: 'Cancel',
+    deleteBtn: 'Delete',
+    deleteError: 'Error deleting item',
   },
 }

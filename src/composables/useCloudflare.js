@@ -60,6 +60,28 @@ export function useCloudflare() {
     return data
   }
 
+  // ── INBOX (forwarded emails awaiting reply) ─────────────────────────────
+
+  async function getInbox() {
+    const { data } = await apiClient().get('/inbox')
+    return data // [{ id, createdAt, originalFrom, originalFromName, originalTo, subject, body, matchedAlias }]
+  }
+
+  async function dismissInboxItem(id) {
+    await apiClient().delete(`/inbox/${id}`)
+  }
+
+  // ── SENT (history of emails sent through mailias) ───────────────────────
+
+  async function getSent() {
+    const { data } = await apiClient().get('/sent')
+    return data // [{ id, createdAt, from, to, replyTo, subject, body, attachmentCount }]
+  }
+
+  async function deleteSentItem(id) {
+    await apiClient().delete(`/sent/${id}`)
+  }
+
   return {
     getAliases,
     createAlias,
@@ -67,5 +89,9 @@ export function useCloudflare() {
     updateAliasDestination,
     deleteAlias,
     sendEmail,
+    getInbox,
+    dismissInboxItem,
+    getSent,
+    deleteSentItem,
   }
 }

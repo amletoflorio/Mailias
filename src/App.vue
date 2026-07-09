@@ -28,6 +28,13 @@
         <RouterLink to="/compose" class="nav-item" active-class="active">
           <span class="nav-icon">✏️</span> {{ t('nav.compose') }}
         </RouterLink>
+        <RouterLink to="/inbox" class="nav-item" active-class="active">
+          <span class="nav-icon">📥</span> {{ t('nav.inbox') }}
+          <span v-if="inboxStore.items.length" class="nav-badge">{{ inboxStore.items.length }}</span>
+        </RouterLink>
+        <RouterLink to="/sent" class="nav-item" active-class="active">
+          <span class="nav-icon">📤</span> {{ t('nav.sent') }}
+        </RouterLink>
         <RouterLink to="/aliases" class="nav-item" active-class="active">
           <span class="nav-icon">🏷️</span> {{ t('nav.aliases') }}
         </RouterLink>
@@ -58,6 +65,17 @@
         <span class="nav-icon">✏️</span>
         <span>{{ t('nav.compose') }}</span>
       </RouterLink>
+      <RouterLink to="/inbox" class="nav-item" active-class="active">
+        <span class="nav-icon" style="position:relative">
+          📥
+          <span v-if="inboxStore.items.length" class="nav-badge nav-badge--mobile">{{ inboxStore.items.length }}</span>
+        </span>
+        <span>{{ t('nav.inbox') }}</span>
+      </RouterLink>
+      <RouterLink to="/sent" class="nav-item" active-class="active">
+        <span class="nav-icon">📤</span>
+        <span>{{ t('nav.sent') }}</span>
+      </RouterLink>
       <RouterLink to="/aliases" class="nav-item" active-class="active">
         <span class="nav-icon">🏷️</span>
         <span>{{ t('nav.aliases') }}</span>
@@ -73,15 +91,17 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuth } from '@/composables/useAuth'
+import { useInboxStore } from '@/stores/inbox'
 import { setLocale } from '@/i18n'
 
 const { t, locale } = useI18n()
 const { isAuthenticated, profile, init, logout } = useAuth()
 const route = useRoute()
+const inboxStore = useInboxStore()
 
 const isPublicRoute = computed(() => route.meta.public)
 const domain = import.meta.env.VITE_CF_DOMAIN || 'yourdomain.com'
@@ -97,6 +117,7 @@ function toggleLocale() {
 }
 
 onMounted(init)
+watch(isAuthenticated, (v) => { if (v) inboxStore.fetchInbox() }, { immediate: true })
 </script>
 
 <style scoped>
@@ -121,5 +142,25 @@ onMounted(init)
 .lang-btn--sidebar {
   margin-left: auto;
   margin-right: 4px;
+}
+
+/* Inbox pending-count badge */
+.nav-badge {
+  margin-left: auto;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  padding: 3px 6px;
+  min-width: 16px;
+  text-align: center;
+}
+.nav-badge--mobile {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  margin-left: 0;
 }
 </style>

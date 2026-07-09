@@ -7,6 +7,10 @@ worker/node_modules/
 dist/
 *.local
 
+# ── Runtime data ──────────────────────────────────────────────────────────────
+/data/
+*.db
+
 # ── Environment variables — never commit secrets ──────────────────────────────
 .env
 .env.local
