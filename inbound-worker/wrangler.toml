@@ -6,5 +6,11 @@ compatibility_date = "2024-01-01"
 # Public URL of the mailias backend's inbound endpoint
 BACKEND_URL = "https://api-mailias.yourdomain.com/inbound"
 
+# Manual-forward fallback address (heuristic quoted-text parsing) — see index.js docblock
+REPLY_ADDRESS = "reply@yourdomain.com"
+
+# Your real mailbox — every alias email is relayed here unmodified after capture
+RELAY_DESTINATION = "you@example.com"
+
 # Secret — set with: wrangler secret put INBOUND_SECRET
 # Must match INBOUND_SECRET in the backend's .env
